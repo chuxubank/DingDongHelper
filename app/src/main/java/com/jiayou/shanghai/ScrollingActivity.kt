@@ -32,7 +32,7 @@ class ScrollingActivity : AppCompatActivity() {
             startActivity(accessibleIntent)
         } catch (e: Exception) {
             view?.let {
-                Snackbar.make(view, "跳转失败，请前往系统设置>无障碍服务>叮咚助手", Snackbar.LENGTH_LONG)
+                Snackbar.make(view, "跳转失败，请前往系统设置>无障碍服务>买菜助手", Snackbar.LENGTH_LONG)
                     .setAction("Action", null).show()
             }
         }

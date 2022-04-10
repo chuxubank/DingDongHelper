@@ -1,65 +1,65 @@
 package com.jiayou.shanghai
 
-import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
-import android.view.accessibility.AccessibilityNodeInfo
-import kotlinx.coroutines.GlobalScope
+import android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-class DingDongService : AccessibilityService() {
+class DingDongHelper(
+    val performGlobalAction: (Int) -> Unit
+) : AbstractHelper() {
     var currentClassName: String = ""
     var chooseTimeSuccess: Boolean = false
     var enableJumpCart: Boolean = true
-    var checkNotificationCount: Int = 0;
+    var checkNotificationCount: Int = 0
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        Log.d(TAG, "event: $event")
-        event?.let {
-            handleClassName(event)
-            when (currentClassName) {
-                CART_ACTIVITY -> {
-                    pay(event)
-                }
-                HOME_ACTIVITY -> {
-                    jumpToCartActivity(event)
-                }
-                CHOOSE_DELIVERY_TIME, CHOOSE_DELIVERY_TIME_V2 -> {
-                    chooseDeliveryTime(event)
-                }
-                GX0 -> {
-                    performGlobalAction(GLOBAL_ACTION_BACK)
-                }
-                XN1 -> {
-                    checkNotification(event)
-                }
-                RETURN_CART_DIALOG -> {
-                    clickReturnCartBtn(event)
-                }
-                else -> {
-                    clickDialog(event)
-                }
-            }
-        }
-    }
-
-    private fun handleClassName(event: AccessibilityEvent) {
+    override fun handleEvent(event: AccessibilityEvent) {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         currentClassName = event.className as String
         Log.d(TAG, "currentClassName: $currentClassName")
-        if (currentClassName in listOf(CART_ACTIVITY, CHOOSE_DELIVERY_TIME, CHOOSE_DELIVERY_TIME_V2)) {
+        if (currentClassName in listOf(
+                CART_ACTIVITY,
+                CHOOSE_DELIVERY_TIME,
+                CHOOSE_DELIVERY_TIME_V2
+            )
+        ) {
             enableJumpCart = true
         }
         if (currentClassName == HOME_ACTIVITY) {
             checkNotificationCount = 0
         }
+        when (currentClassName) {
+            CART_ACTIVITY -> {
+                pay(event)
+            }
+            HOME_ACTIVITY -> {
+                jumpToCartActivity(event)
+            }
+            CHOOSE_DELIVERY_TIME, CHOOSE_DELIVERY_TIME_V2 -> {
+                chooseDeliveryTime(event)
+            }
+            GX0 -> {
+                performGlobalAction(GLOBAL_ACTION_BACK)
+            }
+            XN1 -> {
+                checkNotification(event)
+            }
+            RETURN_CART_DIALOG -> {
+                clickReturnCartBtn(event)
+            }
+            else -> {
+                clickDialog(event)
+            }
+        }
     }
 
     private fun clickReturnCartBtn(event: AccessibilityEvent) {
-        var nodes = event.source?.findAccessibilityNodeInfosByText("返回购物车")
+        val nodes = event.source?.findAccessibilityNodeInfosByText("返回购物车")
         nodes?.forEach { node ->
-            node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            node.performAction(ACTION_CLICK)
             Log.d(TAG, "clickDialog confirm")
             return@forEach
         }
@@ -67,7 +67,7 @@ class DingDongService : AccessibilityService() {
 
     private fun checkNotification(event: AccessibilityEvent) {
         if (event.eventType == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) {
-            if (checkNotificationCount ++ > 1) {
+            if (checkNotificationCount++ > 1) {
                 Log.d(TAG, "checkNotificationCount: $checkNotificationCount, return")
                 performGlobalAction(GLOBAL_ACTION_BACK)
             }
@@ -77,27 +77,27 @@ class DingDongService : AccessibilityService() {
     }
 
     private fun pay(event: AccessibilityEvent) {
-        var nodes = event.source?.findAccessibilityNodeInfosByText("立即支付")
+        val nodes = event.source?.findAccessibilityNodeInfosByText("立即支付")
         nodes?.forEach { node ->
-            node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            node.performAction(ACTION_CLICK)
             Log.d(TAG, "onClick pay button")
         }
     }
 
     private fun chooseDeliveryTime(event: AccessibilityEvent) {
         Log.d(TAG, "chooseDeliveryTime: ${event.source}")
-        var nodes = event.source?.findAccessibilityNodeInfosByText("-")
+        val nodes = event.source?.findAccessibilityNodeInfosByText("-")
         nodes?.forEach { node ->
             if (node.parent.isEnabled) {
                 chooseTimeSuccess = true
-                node.parent.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                node.parent.performAction(ACTION_CLICK)
                 Log.d(TAG, "onClick chooseDeliveryTime")
                 return@forEach
             }
         }
         if (!chooseTimeSuccess) {
             performGlobalAction(GLOBAL_ACTION_BACK)
-            GlobalScope.launch {
+            MainScope().launch {
                 delay(100)
                 if (currentClassName in listOf(CHOOSE_DELIVERY_TIME, CHOOSE_DELIVERY_TIME_V2)) {
                     performGlobalAction(GLOBAL_ACTION_BACK)
@@ -111,9 +111,9 @@ class DingDongService : AccessibilityService() {
             Log.d(TAG, "enableJumpCart: $enableJumpCart, return")
             return
         }
-        var nodes = event.source?.findAccessibilityNodeInfosByText("去结算")
+        val nodes = event.source?.findAccessibilityNodeInfosByText("去结算")
         nodes?.forEach { node ->
-            node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            node.performAction(ACTION_CLICK)
             enableJumpCart = false
             Log.d(TAG, "onClick jump to cart")
             return@forEach
@@ -126,23 +126,21 @@ class DingDongService : AccessibilityService() {
             nodes = event.source?.findAccessibilityNodeInfosByText("修改送达时间")
         }
         nodes?.forEach { node ->
-            node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            node.performAction(ACTION_CLICK)
             Log.d(TAG, "clickDialog confirm")
             return@forEach
         }
     }
 
-    override fun onInterrupt() {
-    }
-
     companion object {
-        const val TAG = "DingDongService"
+        private const val TAG = "DingDongHelper"
+        const val PACKAGE_NAME = "com.yaya.zone"
         const val HOME_ACTIVITY = "com.yaya.zone.home.HomeActivity"
         const val CART_ACTIVITY = "cn.me.android.cart.activity.WriteOrderActivity"
         const val CHOOSE_DELIVERY_TIME = "gy"
-        const val GX0 = "gx0"
-        const val RETURN_CART_DIALOG = "by"
-        const val XN1 = "xn1"
         const val CHOOSE_DELIVERY_TIME_V2 = "iy"
+        const val RETURN_CART_DIALOG = "by"
+        const val GX0 = "gx0"
+        const val XN1 = "xn1"
     }
 }
